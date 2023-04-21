@@ -21,6 +21,7 @@ contract CaviarNft is ERC721, ReentrancyGuard {
     uint256 public maxLPSupply;
 
     mapping(uint256 => uint256) public tokenType;
+    mapping(uint256 => uint256) public depositAmount;
 
     event BaseDeposited(address indexed user, uint256 amount, uint256[] lpTokenIds);
     event BaseRedeemed(address indexed user, uint256[] lpTokenIds);
@@ -32,7 +33,10 @@ contract CaviarNft is ERC721, ReentrancyGuard {
         address _caviar,
         address _pair,
         uint256 _maxLPSupply
-    ) ERC721(ERC721(_collection).name(), ERC721(_collection).symbol()) {
+    ) ERC721(
+        string(abi.encodePacked(ERC721(_collection).name(), " (cABC)")), 
+        string(abi.encodePacked(ERC721(_collection).symbol(), " (cABC)"))
+    ) {
         collection = _collection;
         caviar = ICaviar(_caviar);
         pair = IPair(_pair);
@@ -44,7 +48,6 @@ contract CaviarNft is ERC721, ReentrancyGuard {
     function depositBasic(
         uint256[] calldata _lpTokenIds
     ) external nonReentrant {
-        
         uint256 _amount = _lpTokenIds.length * 1e18;
         require(
             baseToken.transferFrom(msg.sender, address(this), _amount)
@@ -59,8 +62,9 @@ contract CaviarNft is ERC721, ReentrancyGuard {
                 _lpTokenIds[i] < maxLPSupply
                 , "ID too high"
             );
-            tokenType[_lpTokenIds[i]] = 1;
             _mint(msg.sender, _lpTokenIds[i]);
+            tokenType[_lpTokenIds[i]] = 1;
+            depositAmount[_lpTokenIds[i]] = 1e18;
         }
         emit BaseDeposited(msg.sender, _amount, _lpTokenIds);
     }
@@ -68,7 +72,7 @@ contract CaviarNft is ERC721, ReentrancyGuard {
     function redeemBasic(
         uint256[] calldata _lpTokenIds
     ) external nonReentrant {
-        uint256 _amount = _lpTokenIds.length * 1e18;
+        uint256 amount;
         for(uint256 i = 0; i < _lpTokenIds.length; i++) {
             require(
                 ownerOf(_lpTokenIds[i]) == msg.sender
@@ -78,20 +82,19 @@ contract CaviarNft is ERC721, ReentrancyGuard {
                 tokenType[_lpTokenIds[i]] == 1
                 , "Not an LP token"
             );
+            delete tokenType[_lpTokenIds[i]];
             _burn(_lpTokenIds[i]);
+            amount += depositAmount[_lpTokenIds[i]];
+            delete depositAmount[_lpTokenIds[i]];
         }
-        baseToken.transfer(msg.sender, _amount);
+        baseToken.transfer(msg.sender, amount);
         emit BaseRedeemed(msg.sender, _lpTokenIds);
     }
 
     function depositLP(
         uint256[] calldata _lpTokenIds
     ) external nonReentrant {
-        uint256 _amount = getNFTToToken(_lpTokenIds.length);
-        require(
-            lpToken.transferFrom(msg.sender, address(this), _amount)
-            , "Transfer failed"
-        );
+        uint256 amount;
         for(uint256 i = 0; i < _lpTokenIds.length; i++) {
             require(
                 !_exists(_lpTokenIds[i])
@@ -101,16 +104,22 @@ contract CaviarNft is ERC721, ReentrancyGuard {
                 _lpTokenIds[i] < maxLPSupply
                 , "ID too high"
             );
-            tokenType[_lpTokenIds[i]] = 2;
             _mint(msg.sender, _lpTokenIds[i]);
+            tokenType[_lpTokenIds[i]] = 2;
+            depositAmount[_lpTokenIds[i]] = getNFTToToken(1);
+            amount += getNFTToToken(1);
         }
-        emit LPDeposited(msg.sender, _amount, _lpTokenIds);
+        require(
+            lpToken.transferFrom(msg.sender, address(this), amount)
+            , "Transfer failed"
+        );
+        emit LPDeposited(msg.sender, amount, _lpTokenIds);
     }
 
     function redeemLP(
         uint256[] calldata _lpTokenIds
     ) external nonReentrant {
-        uint256 _amount = getNFTToToken(_lpTokenIds.length);
+        uint256 amount;
         for(uint256 i = 0; i < _lpTokenIds.length; i++) {
             require(
                 ownerOf(_lpTokenIds[i]) == msg.sender
@@ -120,9 +129,12 @@ contract CaviarNft is ERC721, ReentrancyGuard {
                 tokenType[_lpTokenIds[i]] == 2
                 , "Not an LP token"
             );
+            delete tokenType[_lpTokenIds[i]];
             _burn(_lpTokenIds[i]);
+            amount += depositAmount[_lpTokenIds[i]];
+            delete depositAmount[_lpTokenIds[i]];
         }
-        lpToken.transfer(msg.sender, _amount);
+        lpToken.transfer(msg.sender, amount);
         emit LPRedeemed(msg.sender, _lpTokenIds);
     }
 
@@ -130,5 +142,11 @@ contract CaviarNft is ERC721, ReentrancyGuard {
         uint256 _amountNft
     ) public view returns(uint256) {
         return _amountNft * 1e18 * lpToken.totalSupply() / pair.fractionalTokenReserves();
+    }
+
+    function getTokenToNFT(
+        uint256 _amountToken
+    ) public view returns(uint256) {
+        return _amountToken * pair.fractionalTokenReserves() / lpToken.totalSupply() / 1e18;
     }
 }

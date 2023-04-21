@@ -16,11 +16,11 @@ async function main() {
     //     deployer.address,
     //     "0x15B9D8ba57E67D6683f3E7Bec24A32b98a7cdb6b"
     // );
-    factory = await Factory.attach("0x3a6b609575e438ab3C87262CBb227d6DB5F2f94b");
+    factory = await Factory.attach("0x9B682CBC9FD6E9053197b9aA53c0B36E18A4ad1E");
     console.log("Factory:", factory.address);
 
     CaviarNft = await ethers.getContractFactory("CaviarNft");
-    caviar = await CaviarNft.attach("0x04450E9b684AE36f3fa2a72579d0498E6d447f5E");
+    caviar = await CaviarNft.attach("0x44E40251092f248d067990699Da4099c92d06eF1");
     console.log("Caviar NFT:", caviar.address);
 
     //Get user balance
@@ -33,17 +33,24 @@ async function main() {
     console.log("USER BASIC BAL:", await basic.balanceOf(deployer.address));
     console.log("CAVIAR NFT BAL:", await basic.balanceOf(caviar.address));
 
+    // await basic.transfer("0xE6dC2c1a17b093F4f236Fe8545aCb9D5Ad94334a", "1000000000000000000");
+    // await lp.transfer("0xE6dC2c1a17b093F4f236Fe8545aCb9D5Ad94334a", (49395533091656085 * 5).toString());
+
     //WL Creator
     // const wlCreator = await factory.whitelistCreator(
-    //     [deployer.address]
+    //     [
+    //         deployer.address
+    //         , "0xE6dC2c1a17b093F4f236Fe8545aCb9D5Ad94334a"
+    //     ]
     // );
     // wlCreator.wait();
+    // console.log("Whitelist complete");
 
     //Create caviarNFT
     // const createNFT = await factory.createCaviarNFT(
-    //     '0xC1A308D95344716054d4C078831376FC78c4fd72'
+    //     '0x8971718bca2b7fc86649b84601b17b634ecbdf19'
     //     , constants.AddressZero
-    //     , '0x39ca12FF27A6276Bb23131803b67Ca0336843643'
+    //     , '0x6a265bFBCf45A5885f48b644B3Ab4E6c3260fFC3'
     //     , 10000
     // ); 
     // createNFT.wait();
@@ -51,7 +58,7 @@ async function main() {
     // console.log(
     //     "Caviar NFT:", 
     //     await factory.caviarNFTs(
-    //         '0xC1A308D95344716054d4C078831376FC78c4fd72'
+    //         '0x8971718bca2b7fc86649b84601b17b634ecbdf19'
     //         , constants.AddressZero
     //     )
     // );
@@ -79,10 +86,17 @@ async function main() {
     // depositLP.wait();
 
     //Redeem LP 
-    // const redeemLP = await caviar.redeemLP(
-    //     [1]
+    // const redeemLP = await caviar.connect(impersonatedSigner).redeemLP(
+    //     [18]
     // );
     // redeemLP.wait();
+
+    //Get NFT to Token
+    // console.log((await caviar.getNFTToToken(1)).toString());
+    // console.log((await lp.balanceOf(caviar.address)).toString());
+    // console.log((await lp.balanceOf(deployer.address) / (await caviar.getNFTToToken(1)).toString()));
+
+    //Get Token to NFT
 }
 
 main()
